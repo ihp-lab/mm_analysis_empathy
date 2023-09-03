@@ -14,7 +14,7 @@
     Brian Borsari</a>,
 <a href="https://woolleylab.ucsf.edu/principal-investigator">
     Joshua Woolley</a>,
-
+<br>
 <a href="https://schererstefan.net/">
     Stefan Scherer</a>,
 <a href="https://people.ict.usc.edu/~soleymani/">
@@ -58,7 +58,7 @@ pip install transformers==4.28.1
 TODO
 
 ## Checkpoints
-Checkpoints are available on Google Drive: [exps_independent]() and [exps_dependent]().
+Checkpoints are available on Google Drive: [exps_independent](https://drive.google.com/drive/folders/1hl5dswV38bRv-cG3CtGg5OKHTC7eGx0m?usp=drive_link) and [exps_dependent](https://drive.google.com/drive/folders/1iiFEnqAS4Tm69ANdoG-ew5EDIj1HMS0R?usp=drive_link).
 
 Put `./exps_independent` and `./exps_dependent` under `./mm_analysis_empathy`.
 
@@ -87,8 +87,9 @@ If you have any questions, please raise an issue or email to Trang Tran (`ttran@
 
 ## Credits
 Our codes are based on the following repositories.
-[text-empathy-recognition](https://github.com/ihp-lab/empathy-recognition-acii-2023)
-[multimodal-fusion](https://github.com/ihp-lab/XNorm)
+
+- [text-empathy-recognition](https://github.com/ihp-lab/empathy-recognition-acii-2023)
+- [multimodal-fusion](https://github.com/ihp-lab/XNorm)
 
 ## TODO
 - [ ] add introduction
