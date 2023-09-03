@@ -131,7 +131,7 @@ class AudioEncoder(nn.Module):
                     nn.Dropout(p=opt.dropout),
                     nn.Linear(self.hidden_dim, opt.class_num))
         
-    def extract_features(self, features, speakers): 
+    def extract_features(self, features, lengths, speakers): 
         batch_size, utt_count, feat_dim = features.shape
 
         features = features.reshape(batch_size*utt_count, feat_dim)
@@ -146,56 +146,30 @@ class AudioEncoder(nn.Module):
         return features
 
     def forward(self, features, lengths, speakers):
-        features = self.extract_features(features, speakers)
+        features = self.extract_features(features, lengths, speakers)
         outputs = self.classifier(features)
 
         return outputs
-
-
-class EarlyFusionEncoder(nn.Module):
-    def __init__(self, opt):
-        super(EarlyFusionEncoder, self).__init__()
-
-        self.audio_encoder = AudioEncoder(opt)
-        self.text_encoder = TextEncoder(opt)
-
-        self.text_out_dim = opt.hidden_dim_1 * 4
-        self.audio_out_dim = opt.hidden_dim * 2
-        self.hidden_dim = opt.hidden_dim
-        self.classifier = nn.Sequential(
-                    nn.Linear(self.text_out_dim+self.audio_out_dim, self.hidden_dim),
-                    nn.ReLU(),
-                    nn.BatchNorm1d(num_features=self.hidden_dim),
-                    nn.Dropout(p=opt.dropout),
-                    nn.Linear(self.hidden_dim, opt.class_num))
-
-    def forward(self, data):
-        input_ids, attn_mask, lengths, audio_features, _, speakers, _ = data
-
-        text_embeddings = self.text_encoder.extract_features(input_ids, attn_mask, lengths, speakers)
-        audio_embeddings = self.audio_encoder.extract_features(audio_features)
-
-        embeddings = torch.cat([text_embeddings, audio_embeddings], dim=1)
-        fused_out = self.classifier(embeddings)
-
-        return fused_out
 
 
 class EarlyFusionEncoderFinetune(nn.Module):
     def __init__(self, opt):
         super(EarlyFusionEncoderFinetune, self).__init__()
 
-        self.audio_encoder = AudioEncoder(opt)
+        if opt.speaker_encoding: # only text modality includes speaker encoding
+            opt.speaker_encoding = False
+            self.audio_encoder = AudioEncoder(opt)
+            opt.speaker_encoding = True
         self.text_encoder = TextEncoder(opt)
-        if opt.quantile == 3:
-            quantile = 1
-        elif opt.quantile == -1:
-            quantile = 2
-        elif opt.quantile == 1:
-            quantile = 3
+        if opt.quartile == 1:
+            quartile = 'quartile-1'
+        elif opt.quartile == 3:
+            quartile = 'quartile-3'
+        elif opt.quartile == -1:
+            quartile = 'quartile-all'
 
-        self.audio_encoder.load_state_dict(torch.load("./{}/combined/audio/{}-{}/audio_{}.pt".format(opt.out_path, opt.by_speaker, quantile, opt.fold))["model"])
-        self.text_encoder.load_state_dict(torch.load("./{}/combined/text/{}-{}/text_{}.pt".format(opt.out_path, opt.by_speaker, quantile, opt.fold))["model"])
+        self.audio_encoder.load_state_dict(torch.load("{}/audio/{}-{}/audio_{}.pt".format(opt.out_path, opt.by_speaker, quartile, opt.fold))["model"])
+        self.text_encoder.load_state_dict(torch.load("{}/text/{}-{}/text_{}.pt".format(opt.out_path, opt.by_speaker, quartile, opt.fold))["model"])
 
         self.text_out_dim = opt.hidden_dim_1 * 4
         self.audio_out_dim = opt.hidden_dim * 2
@@ -208,33 +182,13 @@ class EarlyFusionEncoderFinetune(nn.Module):
                     nn.Linear(self.hidden_dim, opt.class_num))
 
     def forward(self, data):
-        input_ids, attn_mask, lengths, audio_features, _, speakers, _ = data
+        input_ids, attn_mask, lengths, audio_features, seq_lengths, speakers, _ = data
 
         text_embeddings = self.text_encoder.extract_features(input_ids, attn_mask, lengths, speakers)
-        audio_embeddings = self.audio_encoder.extract_features(audio_features)
+        audio_embeddings = self.audio_encoder.extract_features(audio_features, seq_lengths, speakers)
 
         embeddings = torch.cat([text_embeddings, audio_embeddings], dim=1)
         fused_out = self.classifier(embeddings)
-
-        return fused_out
-
-
-class LateFusionEncoder(nn.Module):
-    def __init__(self, opt):
-        super(LateFusionEncoder, self).__init__()
-
-        self.audio_encoder = AudioEncoder(opt)
-        self.text_encoder = TextEncoder(opt)
-        self.modality_ratio = nn.Parameter(torch.randn(1))
-        self.softmax = nn.Softmax(dim=1)
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, data):
-        input_ids, attn_mask, lengths, audio_features, seq_lengths, speakers, _ = data
-
-        audio_logits = self.audio_encoder(audio_features, seq_lengths, speakers)
-        text_logits = self.text_encoder(input_ids, attn_mask, lengths, speakers)
-        fused_out = self.sigmoid(self.modality_ratio) * self.softmax(audio_logits) + (1-self.sigmoid(self.modality_ratio)) * self.softmax(text_logits)
 
         return fused_out
 
@@ -243,17 +197,20 @@ class LateFusionEncoderFinetune(nn.Module):
     def __init__(self, opt):
         super(LateFusionEncoderFinetune, self).__init__()
 
-        self.audio_encoder = AudioEncoder(opt)
+        if opt.speaker_encoding: # only text modality includes speaker encoding
+            opt.speaker_encoding = False
+            self.audio_encoder = AudioEncoder(opt)
+            opt.speaker_encoding = True
         self.text_encoder = TextEncoder(opt)
-        if opt.quantile == 3:
-            quantile = 1
-        elif opt.quantile == -1:
-            quantile = 2
-        elif opt.quantile == 1:
-            quantile = 3
+        if opt.quartile == 1:
+            quartile = 'quartile-1'
+        elif opt.quartile == 3:
+            quartile = 'quartile-3'
+        elif opt.quartile == -1:
+            quartile = 'quartile-all'
 
-        self.audio_encoder.load_state_dict(torch.load("./{}/combined/audio/{}-{}/audio_{}.pt".format(opt.out_path, opt.by_speaker, quantile, opt.fold))["model"])
-        self.text_encoder.load_state_dict(torch.load("./{}/combined/text/{}-{}/text_{}.pt".format(opt.out_path, opt.by_speaker, quantile, opt.fold))["model"])
+        self.audio_encoder.load_state_dict(torch.load("{}/audio/{}-{}/audio_{}.pt".format(opt.out_path, opt.by_speaker, quartile, opt.fold))["model"])
+        self.text_encoder.load_state_dict(torch.load("{}/text/{}-{}/text_{}.pt".format(opt.out_path, opt.by_speaker, quartile, opt.fold))["model"])
         self.modality_ratio = nn.Parameter(torch.randn(1))
         self.softmax = nn.Softmax(dim=1)
         self.sigmoid = nn.Sigmoid()
@@ -263,97 +220,6 @@ class LateFusionEncoderFinetune(nn.Module):
 
         audio_logits = self.audio_encoder(audio_features, seq_lengths, speakers)
         text_logits = self.text_encoder(input_ids, attn_mask, lengths, speakers)
-        fused_out = self.sigmoid(self.modality_ratio) * self.softmax(audio_logits) + (1-self.sigmoid(self.modality_ratio)) * self.softmax(text_logits)
-
-        return fused_out
-
-
-class XNorm(nn.Module):
-    def __init__(self, opt):
-        super(XNorm, self).__init__()
-
-        self.audio_encoder = AudioEncoder(opt)
-        self.text_encoder = TextEncoder(opt)
-        self.modality_ratio = nn.Parameter(torch.randn(1))
-        self.softmax = nn.Softmax(dim=1)
-        self.sigmoid = nn.Sigmoid()
-
-        self.text_out_dim = opt.hidden_dim_1 * 4
-        self.audio_out_dim = opt.hidden_dim * 2
-        self.a2t = nn.Linear(self.audio_out_dim, self.text_out_dim*2)
-        self.t2a = nn.Linear(self.text_out_dim, self.audio_out_dim*2)
-
-    def forward(self, data):
-        input_ids, attn_mask, lengths, audio_features, seq_lengths, speakers, _ = data
-
-        x1 = self.text_encoder.extract_features(input_ids, attn_mask, lengths, speakers)
-        x2 = self.audio_encoder.extract_features(audio_features)
-
-        a1, b1 = torch.mean(x1, [1], True), torch.std(x1, [1], keepdim=True).add(1e-8)
-        a1, b1 = a1.repeat(1, x1.size(1)), b1.repeat(1, x1.size(1))
-
-        a2, b2 = torch.chunk(self.a2t(x2), 2, dim=1)
-        final_x1 = x1+((x1-a1)/b1)*b2+a2
-
-        a2, b2 = torch.mean(x2, [1], True), torch.std(x2, [1], keepdim=True).add(1e-8)
-        a2, b2 = a2.repeat(1, x2.size(1)), b2.repeat(1, x2.size(1))
-
-        a1, b1 = torch.chunk(self.t2a(x1), 2, dim=1)
-        final_x2 = x2+((x2-a2)/b2)*b1+a1
-
-        text_logits = self.text_encoder.classifier(final_x1)
-        audio_logits = self.audio_encoder.classifier(final_x2)
-
-        fused_out = self.sigmoid(self.modality_ratio) * self.softmax(audio_logits) + (1-self.sigmoid(self.modality_ratio)) * self.softmax(text_logits)
-
-        return fused_out
-
-
-class XNormFineTune(nn.Module):
-    def __init__(self, opt):
-        super(XNormFineTune, self).__init__()
-
-        self.audio_encoder = AudioEncoder(opt)
-        self.text_encoder = TextEncoder(opt)
-        if opt.quantile == 3:
-            quantile = 1
-        elif opt.quantile == -1:
-            quantile = 2
-        elif opt.quantile == 1:
-            quantile = 3
-
-        self.audio_encoder.load_state_dict(torch.load("./{}/combined/audio/{}-{}/audio_{}.pt".format(opt.out_path, opt.by_speaker, quantile, opt.fold))["model"])
-        self.text_encoder.load_state_dict(torch.load("./{}/combined/text/{}-{}/text_{}.pt".format(opt.out_path, opt.by_speaker, quantile, opt.fold))["model"])
-        self.modality_ratio = nn.Parameter(torch.randn(1))
-        self.softmax = nn.Softmax(dim=1)
-        self.sigmoid = nn.Sigmoid()
-
-        self.text_out_dim = opt.hidden_dim_1 * 4
-        self.audio_out_dim = opt.hidden_dim * 2
-        self.a2t = nn.Linear(self.audio_out_dim, self.text_out_dim*2)
-        self.t2a = nn.Linear(self.text_out_dim, self.audio_out_dim*2)
-
-    def forward(self, data):
-        input_ids, attn_mask, lengths, audio_features, seq_lengths, speakers, _ = data
-
-        x1 = self.text_encoder.extract_features(input_ids, attn_mask, lengths, speakers)
-        x2 = self.audio_encoder.extract_features(audio_features)
-
-        a1, b1 = torch.mean(x1, [1], True), torch.std(x1, [1], keepdim=True).add(1e-8)
-        a1, b1 = a1.repeat(1, x1.size(1)), b1.repeat(1, x1.size(1))
-
-        a2, b2 = torch.chunk(self.a2t(x2), 2, dim=1)
-        final_x1 = x1+((x1-a1)/b1)*b2+a2
-
-        a2, b2 = torch.mean(x2, [1], True), torch.std(x2, [1], keepdim=True).add(1e-8)
-        a2, b2 = a2.repeat(1, x2.size(1)), b2.repeat(1, x2.size(1))
-
-        a1, b1 = torch.chunk(self.t2a(x1), 2, dim=1)
-        final_x2 = x2+((x2-a2)/b2)*b1+a1
-
-        text_logits = self.text_encoder.classifier(final_x1)
-        audio_logits = self.audio_encoder.classifier(final_x2)
-
         fused_out = self.sigmoid(self.modality_ratio) * self.softmax(audio_logits) + (1-self.sigmoid(self.modality_ratio)) * self.softmax(text_logits)
 
         return fused_out

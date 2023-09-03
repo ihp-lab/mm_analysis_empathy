@@ -11,8 +11,8 @@ class TextDataset(Dataset):
         self.session_ids = session_ids 
         data_df = dataset_df[dataset_df["session"].isin(session_ids)]
 
-        if opt.quantile != -1:
-            data_df = data_df[data_df["quant"]==opt.quantile]
+        if opt.quartile != -1:
+            data_df = data_df[data_df["quant"]==opt.quartile]
 
         if opt.by_speaker == "therapist":
             data_df = data_df[data_df["speaker"]=="I"]
@@ -92,8 +92,8 @@ class AudioDataset(Dataset):
         data_df = dataset_df[dataset_df["session"].isin(session_ids)]
         column_path = f"{opt.audio_feat}_path"
 
-        if opt.quantile != -1:
-            data_df = data_df[data_df["quant"]==opt.quantile]
+        if opt.quartile != -1:
+            data_df = data_df[data_df["quant"]==opt.quartile]
 
         if opt.by_speaker == "therapist":
             data_df = data_df[data_df["speaker"]=="I"]
@@ -173,8 +173,8 @@ class MultimodalDataset(Dataset):
         data_df = dataset_df[dataset_df["session"].isin(session_ids)]
         column_path = f"{opt.audio_feat}_path"
 
-        if opt.quantile != -1:
-            data_df = data_df[data_df["quant"]==opt.quantile]
+        if opt.quartile != -1:
+            data_df = data_df[data_df["quant"]==opt.quartile]
 
         if opt.by_speaker == "therapist":
             data_df = data_df[data_df["speaker"]=="I"]
