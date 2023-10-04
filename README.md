@@ -55,7 +55,9 @@ pip install transformers==4.28.1
 ```
 
 ## Data
-TODO
+Sample data can be downloaded from Google Drive: [sample data](https://drive.google.com/file/d/1PeMqm-2xohMnnlUr4M-THWi94765lot1/view?usp=drive_link). Since the clinical data is not public, we have sampled a subset in addition to replacing a random set of transcripts with random tokens. The cross-validation folds are also for sample/toy use only.
+
+Download and untar the file, then put `sample_data` under `./mm_analysis_empathy`.
 
 ## Checkpoints
 Checkpoints are available on Google Drive: [exps_independent](https://drive.google.com/drive/folders/1hl5dswV38bRv-cG3CtGg5OKHTC7eGx0m?usp=drive_link) and [exps_dependent](https://drive.google.com/drive/folders/1iiFEnqAS4Tm69ANdoG-ew5EDIj1HMS0R?usp=drive_link).
