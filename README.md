@@ -65,14 +65,35 @@ Checkpoints are available on Google Drive: [exps_independent](https://drive.goog
 Put `./exps_independent` and `./exps_dependent` under `./mm_analysis_empathy`.
 
 ## Training and Evaluation
+### General notes:
+* The json file `./sample_data/sample_data_folds.json` should be your cross-validation folds; supply the appropriate file depending on the therapist-independent vs. therapist-dependent settings.
+* Quartiles ara 0-indexed, i.e. to train/evaluate on Q2 (like in our paper), set argument `--quartile 1`. `quartile=-1` uses the full sessions.
+* The code assumes acoustic features are stored under `./sample_data/sample_features` 
+
 ```
-CUDA_VISIBLE_DEVICES=0 python run.py --model text --model_name text --by_speaker therapist --quartile 1 --output_filename therapist-quartile-1 --dataset_fold_path ./data/dependent_dataset_folds.json --out_path ./exps_dependent
+CUDA_VISIBLE_DEVICES=0 python run.py --model {text,audio,early_fusion_finetune,late_fusion_finetune} 
+    --model_name {text,audio,early_fusion_finetune,late_fusion_finetune} 
+    --by_speaker {therapist,both} 
+    --quartile {0,1,2,3,-1} 
+    --output_filename {therapist,both}-quartile-{0,1,2,3,all} 
+    --epochs_num 5
+    --out_path ./exps_{dependent,independent}
+    --data_root ./sample_data
+    --data_path ./sample_data/sample_data_feats.tsv
+    --dataset_fold_path ./sample_data/sample_data_folds.json 
+```
 
-CUDA_VISIBLE_DEVICES=0 python run.py --model audio --model_name audio --speaker_encoding False --by_speaker both --quartile 3 --output_filename both-quartile-3 --dataset_fold_path ./data/dependent_dataset_folds.json --out_path ./exps_dependent
-
-CUDA_VISIBLE_DEVICES=0 python run.py --model early_fusion_finetune --model_name early_fusion_finetune --by_speaker therapist --quartile -1 --output_filename therapist-quartile-all --dataset_fold_path ./data/independent_dataset_folds.json --out_path ./exps_independent --epochs_num 5
-
-CUDA_VISIBLE_DEVICES=0 python run.py --model late_fusion_finetune --model_name late_fusion_finetune --by_speaker both --quartile -1 --output_filename both-quartile-all --dataset_fold_path ./data/independent_dataset_folds.json --out_path ./exps_independent --epochs_num 5
+For example, this is the command to train and evaluate on the unimodal text model, using only the therapist turns from Q2, assuming `sample_data_folds.json` contains cross-validation folds for the therapist-dependent setting:
+```
+CUDA_VISIBLE_DEVICES=0 python run.py --model text --model_name text 
+    --by_speaker therapist 
+    --quartile 1 
+    --output_filename therapist-quartile-1 
+    --epochs_num 5
+    --out_path ./exps_dependent
+    --data_root ./sample_data
+    --data_path ./sample_data/sample_data_feats.tsv
+    --dataset_fold_path ./sample_data/sample_data_folds.json 
 ```
 
 Get overall f1 scores across folds
@@ -93,9 +114,3 @@ Our codes are based on the following repositories.
 - [text-empathy-recognition](https://github.com/ihp-lab/empathy-recognition-acii-2023)
 - [multimodal-fusion](https://github.com/ihp-lab/XNorm)
 
-## TODO
-- [ ] add introduction
-- [ ] add instructions for data downloading
-- [ ] add sample data so code can run
-- [ ] fix absolute links to directories
-- [ ] add citation/bibtex
