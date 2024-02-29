@@ -60,7 +60,7 @@ Sample data can be downloaded from Google Drive: [sample data](https://drive.goo
 Download and untar the file, then put `sample_data` under `./mm_analysis_empathy`.
 
 ## Checkpoints
-Checkpoints are available on Google Drive: [exps_independent](https://drive.google.com/drive/folders/1hl5dswV38bRv-cG3CtGg5OKHTC7eGx0m?usp=drive_link) and [exps_dependent](https://drive.google.com/drive/folders/1iiFEnqAS4Tm69ANdoG-ew5EDIj1HMS0R?usp=drive_link).
+Checkpoints are available on Google Drive: [exps_independent](https://drive.google.com/drive/folders/1f0CH87HKSoCYKLfvH28nhuSSQF9O-OZE?usp=drive_link) and [exps_dependent](https://drive.google.com/drive/folders/1oqUx5y1_0V59zQ9Qsw31fD-a0dCB284-?usp=sharing).
 
 Put `./exps_independent` and `./exps_dependent` under `./mm_analysis_empathy`.
 
